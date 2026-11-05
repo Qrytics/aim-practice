@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Instrument Range – aim practice</title>
+    <meta name="description" content="Original browser-based 3D aim practice arena. Foundation build: look, movement, pointer lock, sensitivity and FOV settings." />
+  </head>
+  <body data-state="ready">
+    <a class="skip" href="#settings">Skip to settings</a>
+
+    <header class="strip" aria-label="Session readout">
+      <div class="strip-title">
+        <p class="eyebrow">Instrument Range</p>
+        <h1 id="page-title">Aim practice</h1>
+      </div>
+      <dl class="readouts">
+        <div class="readout readout-state">
+          <dt>State</dt>
+          <dd id="r-state">Ready</dd>
+        </div>
+        <div class="readout readout-time">
+          <dt id="r-time-label">Time left</dt>
+          <dd id="r-time" class="mono">60.0</dd>
+        </div>
+        <div class="readout">
+          <dt id="r-primary-label">Hits</dt>
+          <dd id="r-primary" class="mono">0</dd>
+        </div>
+        <div class="readout">
+          <dt>Turned since reset</dt>
+          <dd id="r-turn" class="mono">0.0°</dd>
+        </div>
+        <div class="readout">
+          <dt>Horizontal FOV now</dt>
+          <dd id="r-fov" class="mono">100.0°</dd>
+        </div>
+      </dl>
+    </header>
+
+    <main class="layout">
+      <section class="stage-col" aria-label="Practice arena">
+        <div class="stage" id="stage" data-shape="16:9">
+          <canvas id="arena" aria-label="3D practice arena. Real-time mouse aiming; not operable by keyboard alone."></canvas>
+          <div class="crosshair" id="crosshair" aria-hidden="true"></div>
+          <div class="hud-time mono" id="hud-time" aria-hidden="true">60.0</div>
+          <div class="hud-score mono" id="hud-score" aria-hidden="true"></div>
+          <div class="hud-meter" id="hud-meter" aria-hidden="true" hidden><i id="hud-meter-fill"></i></div>
+          <div class="countdown mono" id="countdown" aria-hidden="true" hidden>3</div>
+
+          <div class="overlay" id="overlay" role="region" aria-labelledby="ov-title" hidden>
+            <div class="card" id="ov-card">
+              <h2 id="ov-title"></h2>
+              <div class="card-scroll" id="ov-scroll">
+              <div class="daily-card" id="daily-card" hidden>
+                <p id="daily-text"></p>
+                <button type="button" class="btn ghost" id="daily-btn">Play today's challenge</button>
+              </div>
+              <fieldset class="profile-pick" id="profile-pick" hidden>
+                <legend class="sr-only">Drill</legend>
+                <label class="profile-opt" data-profile="precision">
+                  <input type="radio" name="profile" value="precision" checked />
+                  <span class="po-name">Precision <span class="tag-inspired">Valorant-inspired</span></span>
+                  <span class="po-text">Flick to a static target, settle, click once.</span>
+                </label>
+                <label class="profile-opt" data-profile="tracking">
+                  <input type="radio" name="profile" value="tracking" />
+                  <span class="po-name">Tracking <span class="tag-inspired">Overwatch-inspired</span></span>
+                  <span class="po-text">Hold fire and stay on a moving target.</span>
+                </label>
+                <label class="profile-opt" data-profile="grid">
+                  <input type="radio" name="profile" value="grid" />
+                  <span class="po-name">Grid <span class="tag-inspired">original</span></span>
+                  <span class="po-text">Clear targets on a wall as fast and cleanly as you can.</span>
+                </label>
+              </fieldset>
+              <div class="pick-row" id="pick-row" hidden>
+                <div class="field">
+                  <label for="f-difficulty">Difficulty</label>
+                  <select id="f-difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="standard" selected>Standard</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="f-length">Length</label>
+                  <select id="f-length">
+                    <option value="30">30 seconds</option>
+                    <option value="60" selected>60 seconds</option>
+                    <option value="90">90 seconds</option>
+                  </select>
+                </div>
+              </div>
+              <div id="ov-body"></div>
+              <div id="ov-extra"></div>
+              <div id="ov-results" role="region" aria-label="Session results" tabindex="0"></div>
+              </div>
+              <p id="ov-notice" class="notice" role="status" hidden></p>
+              <div class="actions" id="ov-actions"></div>
+            </div>
+          </div>
+
+          <div class="fallback" id="fallback" role="alert" hidden>
+            <div class="card">
+              <h2 id="fb-title">This device can't run the arena</h2>
+              <p id="fb-reason"></p>
+              <p id="fb-need"></p>
+              <p class="muted">Nothing is simulated or faked here: without the capability above, the trainer does not run.</p>
+              <div class="actions"><button type="button" id="fb-retry" class="btn">Check again</button></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="stage-note">
+          Controls: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · mouse looks · left button fires · <kbd>P</kbd> pauses ·
+          <kbd>Esc</kbd> releases the mouse · <kbd>R</kbd> restarts. Real-time mouse aiming needs a mouse and
+          steady hand-eye control; this task is not universally accessible, and no alternative input is provided.
+        </p>
+        <p class="sr-only" id="live" role="status" aria-live="polite"></p>
+      </section>
+
+      <aside class="side" id="settings" aria-label="Settings and diagnostics">
+        <details class="settings-details" id="settings-details" open>
+        <summary>Settings, calibration and diagnostics</summary>
+        <form id="settings-form" novalidate autocomplete="off">
+          <fieldset>
+            <legend>Sensitivity</legend>
+            <div class="radios" role="radiogroup" aria-label="Sensitivity input method">
+              <label><input type="radio" name="sens-mode" value="nominal" checked /> DPI and cm/360 <span class="tag">nominal</span></label>
+              <label><input type="radio" name="sens-mode" value="direct" /> Degrees per input unit</label>
+            </div>
+
+            <div class="field">
+              <label for="f-dpi">Mouse DPI</label>
+              <input id="f-dpi" type="number" inputmode="decimal" step="any" aria-describedby="e-dpi" />
+              <p class="err" id="e-dpi" role="alert"></p>
+            </div>
+            <div class="field">
+              <label for="f-cm">Distance for a 360° turn (cm)</label>
+              <input id="f-cm" type="number" inputmode="decimal" step="any" aria-describedby="e-cm" />
+              <p class="err" id="e-cm" role="alert"></p>
+            </div>
+            <div class="field">
+              <label for="f-upc">Browser input units per mouse count</label>
+              <input id="f-upc" type="number" inputmode="decimal" step="any" aria-describedby="e-upc h-upc" />
+              <p class="hint" id="h-upc">Assumed 1. Browsers differ (physical, logical or CSS pixels), so use calibration below if turns don't match.</p>
+              <p class="err" id="e-upc" role="alert"></p>
+            </div>
+            <div class="field">
+              <label for="f-dpu">Degrees per browser input unit</label>
+              <input id="f-dpu" type="number" inputmode="decimal" step="any" aria-describedby="e-dpu" />
+              <p class="err" id="e-dpu" role="alert"></p>
+            </div>
+
+            <p class="derived" id="sens-derived"></p>
+            <p class="hint" id="sens-mode-report"></p>
+            <p class="hint">These values are not converted from, or matched to, any game's sensitivity scale.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Crosshair</legend>
+            <div class="xh-preview" id="xh-preview"></div>
+            <div class="xh-preview light" id="xh-preview-light"></div>
+            <div class="field">
+              <label for="x-style">Style</label>
+              <select id="x-style">
+                <option value="cross">Cross</option>
+                <option value="cross-dot">Cross with dot</option>
+                <option value="dot">Dot</option>
+                <option value="circle">Circle</option>
+              </select>
+            </div>
+            <div class="field"><label for="x-size">Arm length (px)</label><input id="x-size" type="range" min="2" max="30" step="1" /></div>
+            <div class="field"><label for="x-thick">Thickness (px)</label><input id="x-thick" type="range" min="1" max="6" step="1" /></div>
+            <div class="field"><label for="x-gap">Centre gap (px)</label><input id="x-gap" type="range" min="0" max="16" step="1" /></div>
+            <div class="field"><label for="x-opacity">Opacity</label><input id="x-opacity" type="range" min="20" max="100" step="5" /></div>
+            <div class="field"><label for="x-color">Colour</label><input id="x-color" type="color" /></div>
+            <div class="field row"><label class="check"><input type="checkbox" id="x-outline" /> Dark outline</label></div>
+            <p class="msg" id="x-warn" role="status"></p>
+            <div class="btn-row"><button type="button" class="btn ghost" id="x-reset">Reset crosshair</button></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Your data</legend>
+            <p class="hint">Run summaries (score, accuracy, seed) are stored only in this browser. No mouse movement is recorded.</p>
+            <div class="btn-row">
+              <button type="button" class="btn ghost" id="stats-open">View stats</button>
+              <button type="button" class="btn ghost" id="data-clear">Clear history</button>
+            </div>
+            <p class="msg" id="data-msg" role="status"></p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Sound</legend>
+            <div class="field row">
+              <label class="check"><input type="checkbox" id="f-mute" /> Mute sound</label>
+            </div>
+            <div class="field">
+              <label for="f-vol">Volume</label>
+              <input id="f-vol" type="range" min="0" max="100" step="5" value="50" />
+            </div>
+            <p class="hint">Short synthesized beeps confirm hits and misses. No game audio is used.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Calibration</legend>
+            <p class="hint">Press the arena, turn the mouse a measured distance, press <kbd>Esc</kbd>, then apply. The counter above reads the degrees the view actually turned.</p>
+            <div class="field">
+              <label for="f-intended">Turn you physically made (°)</label>
+              <input id="f-intended" type="number" inputmode="decimal" step="any" value="360" aria-describedby="e-intended" />
+              <p class="err" id="e-intended" role="alert"></p>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn" id="cal-apply">Apply calibration</button>
+              <button type="button" class="btn ghost" id="cal-reset">Reset counter</button>
+            </div>
+            <p class="hint" id="cal-msg" role="status"></p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Field of view</legend>
+            <div class="field">
+              <label for="f-fov">Horizontal FOV at 16:9 (°)</label>
+              <input id="f-fov" type="number" inputmode="decimal" step="any" aria-describedby="e-fov h-fov" />
+              <p class="hint" id="h-fov">Your setting is the horizontal FOV measured in a 16:9 window. Vertical FOV is derived from it and stays fixed; wider windows show more to the sides.</p>
+              <p class="err" id="e-fov" role="alert"></p>
+            </div>
+            <p class="derived" id="fov-derived"></p>
+            <div class="field">
+              <label for="f-shape">Arena window shape</label>
+              <select id="f-shape" aria-describedby="h-shape">
+                <option value="16:9">16:9</option>
+                <option value="21:9">21:9 (ultrawide)</option>
+                <option value="4:3">4:3</option>
+                <option value="fill">Fill available space</option>
+              </select>
+              <p class="hint" id="h-shape">Changes the arena's aspect ratio so you can see Hor+ behaviour. Layout only.</p>
+            </div>
+          </fieldset>
+        </form>
+
+        <section class="diag" aria-labelledby="diag-h">
+          <h2 id="diag-h">Rendering &amp; timing (this browser, now)</h2>
+          <dl>
+            <div><dt>Renderer</dt><dd id="d-renderer">–</dd></div>
+            <div><dt>Software rendering</dt><dd id="d-soft">–</dd></div>
+            <div><dt>Device pixel ratio</dt><dd id="d-dpr">–</dd></div>
+            <div><dt>Drawing buffer</dt><dd id="d-buffer">–</dd></div>
+            <div><dt>Frame time p50 / p95 / p99</dt><dd id="d-frames" class="mono">–</dd></div>
+          </dl>
+          <p class="hint">Measured on this machine in this session. Not a promise for other hardware.</p>
+        </section>
+
+        <details class="notes">
+          <summary>How to read these numbers</summary>
+          <ul>
+            <li><b>Sourced:</b> pointer-lock and movement behaviour is described in MDN; three.js camera FOV is vertical.</li>
+            <li><b>Approximation:</b> DPI/cm-360 turn rates are nominal until calibrated on your machine.</li>
+            <li><b>Original choices:</b> arena, drills, target sizes, speeds, timings, scoring formulas and every default value here.</li>
+            <li>Nothing here claims to replicate Valorant or Overwatch. Full notes: <code>docs/reference-notes.md</code>.</li>
+          </ul>
+        </details>
+        </details>
+      </aside>
+    </main>
+
+    <dialog id="stats-dialog" aria-labelledby="stats-title">
+      <h2 id="stats-title">Your stats</h2>
+      <div id="stats-body"></div>
+      <form method="dialog" class="actions"><button class="btn" id="stats-close">Close</button></form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
